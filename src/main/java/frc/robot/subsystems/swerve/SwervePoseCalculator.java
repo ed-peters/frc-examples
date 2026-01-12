@@ -11,7 +11,10 @@ import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import frc.robot.util.Util;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -19,6 +22,10 @@ import java.util.function.Supplier;
  * estimation. Also allows you to reset the current pose. See
  * the <a href="https://docs.wpilib.org/en/stable/docs/software/advanced-controls/state-space/state-space-pose-estimators.html">WPILib
  * docs</a> for more background on fused estimates.</p>
+ *
+ * <p>Also implements the ability to have "pose reset listeners". This is
+ * for eventually supporting stuff like QuestNav, where it's important for
+ * multiple systems to be aware of a pose reset.</p>
  *
  * <p>This class is implemented so it doesn't depend on a specific swerve
  * drive implementation or configuration; if it proves useful we might
@@ -45,6 +52,7 @@ public class SwervePoseCalculator {
     final Supplier<SwerveModulePosition[]> modulePositionGetter;
     final SwerveDriveOdometry odometry;
     final SwerveDrivePoseEstimator estimator;
+    final List<Consumer<Pose2d>> resetListeners;
     Pose2d latestVisionPose;
     Pose2d latestOdometryPose;
     Pose2d latestFusedPose;
@@ -82,10 +90,26 @@ public class SwervePoseCalculator {
                 headingGetter.get(),
                 modulePositionGetter.get(),
                 initialPose);
+        this.resetListeners = new ArrayList<>();
         this.latestVisionPose = Util.NAN_POSE;
         this.latestOdometryPose = initialPose;
         this.latestFusedPose = initialPose;
         this.latestVisionTimestamp = Double.NaN;
+
+        // add listeners for pose resets that will update odometry-only and
+        // fused pose estimates
+        resetListeners.add(newPose -> {
+            odometry.resetPosition(
+                    headingGetter.get(),
+                    modulePositionGetter.get(),
+                    newPose);
+        });
+        resetListeners.add(newPose -> {
+            estimator.resetPosition(
+                    headingGetter.get(),
+                    modulePositionGetter.get(),
+                    newPose);
+        });
     }
 
     /**
@@ -130,22 +154,31 @@ public class SwervePoseCalculator {
     }
 
     /**
-     * Reset the pose of the robot to the specified value
+     * Adds a reset listener - these are dudes that get notified whenever
+     * we reset our pose
+     *
+     * @param listener new listener
+     */
+    public void addResetListener(Consumer<Pose2d> listener) {
+        resetListeners.add(listener);
+    }
+
+    /**
+     * Reset the pose of the robot to the specified value, and notify all
+     * waiting listeners of the reset
+     *
      * @param newPose the new pose of the robot
      */
     public void resetPose(Pose2d newPose) {
 
-        odometry.resetPosition(
-                headingGetter.get(),
-                modulePositionGetter.get(),
-                newPose);
+        // update latest values (no need to update the vision estimate)
         latestOdometryPose = newPose;
-
-        estimator.resetPosition(
-                headingGetter.get(),
-                modulePositionGetter.get(),
-                newPose);
         latestFusedPose = newPose;
+
+        // notify anyone listening for updates that we've reset
+        for (Consumer<Pose2d> listener : resetListeners) {
+            listener.accept(latestFusedPose);
+        }
     }
 
     /**

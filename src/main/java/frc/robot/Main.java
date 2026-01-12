@@ -5,11 +5,20 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.RobotBase;
+import frc.robot.testbots.ArmTestbot;
+import frc.robot.testbots.IntakeTestbot;
+import frc.robot.testbots.LimelightTestbot;
+import frc.robot.testbots.PoseMathTestbot;
+import frc.robot.testbots.SwerveTestbot;
 
 public final class Main {
   private Main() {}
 
   public static void main(String... args) {
-    RobotBase.startRobot(Robot::new);
+    RobotBase.startRobot(SwerveTestbot::new);
+//    RobotBase.startRobot(ArmTestbot::new);
+//    RobotBase.startRobot(IntakeTestbot::new);
+//    RobotBase.startRobot(PoseMathTestbot::new);
+//    RobotBase.startRobot(LimelightTestbot::new);
   }
 }

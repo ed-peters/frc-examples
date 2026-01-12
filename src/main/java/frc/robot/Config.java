@@ -9,11 +9,14 @@ import java.util.function.DoubleSupplier;
 
 import static frc.robot.util.Util.pref;
 
+/**
+ * Central class for all configuration properties. This includes both static
+ * constants (stuff that won't change during the season), and "live" preferences
+ * that we might be tweaking and tuning as we go.
+ */
 public interface Config {
 
-    // =========================================================================
-    // SWERVE & VISION
-    // =========================================================================
+//region Swerve ----------------------------------------------------------------
 
     /**
      * Hardware configuration for the swerve chassis, and general behavior
@@ -104,6 +107,10 @@ public interface Config {
         DoubleSupplier translateTolerance = pref("SwerveAuto/Translate/Tolerance", 2.0);
     }
 
+//endregion
+
+//region Vision ----------------------------------------------------------------
+
     interface LimelightSubsystem {
 
         /** Name of the Limelight camera in Network Tables */
@@ -160,9 +167,9 @@ public interface Config {
         DoubleSupplier distanceTolerance = pref("LimelightRotate/DistanceTolerance", 0.5);
     }
 
-    // =========================================================================
-    // INTAKE
-    // =========================================================================
+//endregion
+
+//region Intake ----------------------------------------------------------------
 
     interface Intake {
 
@@ -183,9 +190,9 @@ public interface Config {
 
     }
 
-    // =========================================================================
-    // ARM
-    // =========================================================================
+//endregion
+
+//region Arm -------------------------------------------------------------------
 
     interface Arm {
 
@@ -219,5 +226,7 @@ public interface Config {
         DoubleSupplier angleLow = pref("ArmPresets/Low", 3.0);
 
     }
+
+//endregion
 
 }
