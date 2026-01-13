@@ -38,15 +38,36 @@ public class PoseTrapezoid {
 
     /**
      * Represents the state of the robot at some point on the trajectory
-     * @param pose the expected pose of the robot
-     * @param speeds the expected speed of the robot
      */
-    public record SwerveState(Pose2d pose, ChassisSpeeds speeds) {
+    public class SwerveState {
 
+        Pose2d pose;
+        ChassisSpeeds speeds;
+
+        /**
+         * Creates a new {@link SwerveState}
+         * @param pose the expected pose of the robot
+         * @param speeds the expected speed of the robot
+         */
+        public SwerveState(Pose2d pose, ChassisSpeeds speeds) {
+            this.pose = pose;
+            this.speeds = speeds;
+        }
+
+        public Pose2d getPose() {
+            return pose;
+        }
+
+        public ChassisSpeeds getSpeeds() {
+            return speeds;
+        }
     }
 
     final Trapezoid translation;
     final Trapezoid rotation;
+    final SwerveState nextState;
+    SwerveState startState;
+    SwerveState finalState;
     boolean isTranslating;
     boolean isRotating;
     Pose2d startPose;
@@ -84,6 +105,7 @@ public class PoseTrapezoid {
         this.rotation = new Trapezoid(
                 () -> Units.degreesToRadians(rotateMaxVelocity.getAsDouble()),
                 () -> Units.degreesToRadians(rotateMaxAcceleration.getAsDouble()));
+        this.nextState = new SwerveState(null, null);
         this.isRotating = false;
         this.isTranslating = false;
         this.startPose = Util.NAN_POSE;
@@ -135,6 +157,8 @@ public class PoseTrapezoid {
         this.totalTime = 0.0;
         this.startPose = startPose;
         this.finalPose = finalPose;
+        this.startState = new SwerveState(startPose, Util.ZERO_SPEED);
+        this.finalState = new SwerveState(finalPose, Util.ZERO_SPEED);
 
         // we implement translation by calculating an offset from the start
         // pose which moves along a straight line towards the final pose. we
@@ -204,9 +228,9 @@ public class PoseTrapezoid {
         // if we're before the beginning or after the end, we will use either
         // the start or final pose and assume 0 speed
         if (t < 0) {
-            return new SwerveState(startPose, Util.ZERO_SPEED);
+            return startState;
         } else if (t > totalTime) {
-            return new SwerveState(finalPose, Util.ZERO_SPEED);
+            return finalState;
         }
 
         double speedX = 0.0;
@@ -236,8 +260,8 @@ public class PoseTrapezoid {
             poseY += state.position * sin;
         }
 
-        return new SwerveState(
-                new Pose2d(poseX, poseY, Rotation2d.fromRadians(poseOmega)),
-                new ChassisSpeeds(speedX, speedY, speedOmega));
+        nextState.pose = new Pose2d(poseX, poseY, Rotation2d.fromRadians(poseOmega));
+        nextState.speeds = new ChassisSpeeds(speedX, speedY, speedOmega);
+        return nextState;
     }
 }

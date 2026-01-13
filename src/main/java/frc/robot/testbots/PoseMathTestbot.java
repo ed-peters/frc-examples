@@ -76,9 +76,9 @@ public class PoseMathTestbot extends TimedRobot {
             SwerveState state = trapezoid.sample(timer.get());
             Util.publishPose("AutoStartPose", startPose);
             Util.publishPose("AutoFinalPose", finalPose);
-            Util.publishPose("AutoNextPose", state.pose());
+            Util.publishPose("AutoNextPose", state.getPose());
 
-            calculatedPose = Util.incrementPose(calculatedPose, state.speeds());
+            calculatedPose = Util.incrementPose(calculatedPose, state.getSpeeds());
             Util.publishPose("AutoCalculatedPose", calculatedPose);
         }
     }

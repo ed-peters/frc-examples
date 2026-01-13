@@ -140,8 +140,8 @@ public class SwerveAutoPoseCommand extends Command {
         // first we calculate where we're supposed to be, based on the
         // calculated motion profile
         SwerveState desiredState = trapezoid.sample(timer.get());
-        ChassisSpeeds desiredSpeeds = desiredState.speeds();
-        Pose2d desiredPose = desiredState.pose();
+        ChassisSpeeds desiredSpeeds = desiredState.getSpeeds();
+        Pose2d desiredPose = desiredState.getPose();
         Pose2d currentPose = drive.getPose();
 
         // we tweak the desired speeds using PID to correct for 
