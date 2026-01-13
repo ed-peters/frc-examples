@@ -33,7 +33,17 @@ in view at the same time
 software for high-velocity accuracy (e.g. for shooter)
 
 
-* Example subsystem based on amperage limits like our 2025 Reefscape climber
+* Example subsystem based on amperage limits like our 2025 
+Reefscape climber
 
 
 * Any pertinent examples around QuestNav?
+
+
+* Updating odometry takes a fair amount of CPU cycles; we might 
+want to limit ourselves to one estimator (vision only) in the 
+competition?
+
+
+* Our Limelight layer allocates a bunch of objects 
+(LimelightTarget and  RawFiducial); can/should we limit this?
