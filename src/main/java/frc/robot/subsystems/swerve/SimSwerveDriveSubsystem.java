@@ -66,7 +66,7 @@ public class SimSwerveDriveSubsystem extends SubsystemBase {
                 hardware::getModulePositions,
                 cosineCompensation);
         this.poseResetListeners = new ArrayList<>();
-        this.latestSpeeds = Util.NAN_SPEED;
+        this.latestSpeeds = Util.ZERO_SPEED;
         this.latestGyroHeading = hardware.getHeading();
         this.latestOdometryPose = Pose2d.kZero;
         this.latestPoseEstimate = Pose2d.kZero;

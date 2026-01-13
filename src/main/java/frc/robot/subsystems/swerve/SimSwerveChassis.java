@@ -55,7 +55,7 @@ public class SimSwerveChassis implements SwerveHardware {
     }
 
     @Override
-    public SwerveModulePosition[] getModulePositions() {
+    public SwerveModulePosition [] getModulePositions() {
 
         // module positions are just the current internal state
         SwerveModulePosition[] positions = new SwerveModulePosition[4];

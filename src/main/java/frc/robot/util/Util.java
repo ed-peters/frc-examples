@@ -100,15 +100,15 @@ public class Util {
                                            DoubleSupplier maxTranslate,
                                            DoubleSupplier maxRotate) {
 
-        // calculate target speed in feet per second
+        double mt = maxTranslate.getAsDouble();
+
+        // calculate target speed in feet per second; if it's >max
+        // we will want to scale the x and y speeds down
         double fps = Units.metersToFeet(Math.hypot(
                 speeds.vxMetersPerSecond,
                 speeds.vyMetersPerSecond));
-
-        // divide maximum by the target; if it's < 1 we're going to fast
-        // and need to scale down X and Y speeds accordingly
-        double factor = maxTranslate.getAsDouble() / fps;
-        if (factor > 1.0) {
+        if (fps > mt) {
+            double factor = mt / fps;
             speeds.vxMetersPerSecond *= factor;
             speeds.vyMetersPerSecond *= factor;
         }
