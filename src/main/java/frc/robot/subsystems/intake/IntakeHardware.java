@@ -1,7 +1,7 @@
 package frc.robot.subsystems.intake;
 
 /**
- * Interface for the hardware of an arm subsystem
+ * Interface for the hardware of an intake subsystem.
  */
 public interface IntakeHardware {
 

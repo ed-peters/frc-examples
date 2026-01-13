@@ -1,35 +1,35 @@
-package frc.robot.subsystems.intake;
+package frc.robot.subsystems.shooter;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.util.PDController;
 import frc.robot.util.Util;
 import frc.robot.util.WheelSpeed;
 
 import java.util.Objects;
 import java.util.function.DoubleSupplier;
 
-import static frc.robot.Config.Intake.ejectSpeed;
-import static frc.robot.Config.Intake.gearRatio;
-import static frc.robot.Config.Intake.gobbleSpeed;
-import static frc.robot.Config.Intake.indexSpeed;
-import static frc.robot.Config.Intake.p;
-import static frc.robot.Config.Intake.tolerance;
-import static frc.robot.Config.Intake.v;
-import static frc.robot.Config.Intake.wheelCircumference;
+import static frc.robot.Config.Shooter.d;
+import static frc.robot.Config.Shooter.p;
+import static frc.robot.Config.Shooter.speed1;
+import static frc.robot.Config.Shooter.gearRatio;
+import static frc.robot.Config.Shooter.speed2;
+import static frc.robot.Config.Shooter.speed3;
+import static frc.robot.Config.Shooter.tolerance;
+import static frc.robot.Config.Shooter.v;
+import static frc.robot.Config.Shooter.wheelCircumference;
 
 /**
- * <p>Implementation of a subsystem that manages an intake. This is a motor
+ * <p>Implementation of a subsystem that manages a shooter. This is a motor
  * with an attached gearbox and wheel, which knows how to run at a fixed rate
  * (either wheel revolutions per second or linear feet per second).</p>
  *
- * <p>In comparison with the {@link frc.robot.subsystems.shooter.ShooterSubsystem},
- * this guy relies on software PID control. Both feedforward and feedback are
- * calculated in software. PID parameters are sourced from Preferences, and
- * will be reset whenever a closed-loop command is run.</p>
+ * <p>In comparison with the {@link frc.robot.subsystems.intake.IntakeSubsystem},
+ * this guy relies on hardware PID control. PID and feedforward parameters are
+ * sources from Preferences, and will be reset whenever a closed-loop command
+ * is run.</p>
  */
-public class IntakeSubsystem extends SubsystemBase {
+public class ShooterSubsystem extends SubsystemBase {
 
     /**
      * Setting this to true will make this subsystem publish low-level voltage
@@ -41,11 +41,11 @@ public class IntakeSubsystem extends SubsystemBase {
      * Represents a preset linear speed for the arm, with a value derived from
      * configuration
      */
-    public enum IntakePreset {
+    public enum ShooterPreset {
 
-        GOBBLE,
-        INDEX,
-        EJECT;
+        S1,
+        S2,
+        S3;
 
         /**
          * @return the linear speed corresponding to this preset in feet per
@@ -53,9 +53,9 @@ public class IntakeSubsystem extends SubsystemBase {
          */
         public double linearSpeed() {
             DoubleSupplier speed = switch (this) {
-                case GOBBLE -> gobbleSpeed;
-                case INDEX -> indexSpeed;
-                case EJECT -> () -> -Math.abs(ejectSpeed.getAsDouble());
+                case S1 -> speed1;
+                case S2 -> speed2;
+                case S3 -> speed3;
             };
             return speed.getAsDouble();
         }
@@ -63,24 +63,21 @@ public class IntakeSubsystem extends SubsystemBase {
 
 //region Implementation --------------------------------------------------------
 
-    final IntakeHardware hardware;
-    final PDController pid;
+    final ShooterHardware hardware;
     final WheelSpeed currentSpeed;
     final WheelSpeed setpoint;
     String currentMode;
-    double latestFeedback;
-    double latestFeedforward;
+    double latestSpeed;
     double latestVolts;
 
     /**
-     * Creates a {@link IntakeSubsystem}
+     * Creates a {@link ShooterSubsystem}
      * @param hardware the associated hardware (required)
      * @throws IllegalArgumentException if required parameters are null
      */
-    public IntakeSubsystem(IntakeHardware hardware) {
+    public ShooterSubsystem(ShooterHardware hardware) {
 
         this.hardware = Objects.requireNonNull(hardware);
-        this.pid = new PDController(p, () -> 0.0, tolerance);
         this.currentSpeed = new WheelSpeed(gearRatio, wheelCircumference);
         this.setpoint = new WheelSpeed(gearRatio, wheelCircumference);
         this.currentMode = "idle";
@@ -90,16 +87,21 @@ public class IntakeSubsystem extends SubsystemBase {
             builder.addStringProperty("Mode", () -> currentMode, null);
             builder.addDoubleProperty("MotorSpeedCurrent", currentSpeed::getDriveSpeed, null);
             builder.addDoubleProperty("LinearSpeedCurrent", currentSpeed::getLinearSpeed, null);
+            builder.addDoubleProperty("LinearSpeedError", this::getLinearSpeedError, null);
+            builder.addDoubleProperty("LinearSpeedTarget", setpoint::getLinearSpeed, null);
             builder.addDoubleProperty("WheelSpeedCurrent", currentSpeed::getWheelSpeed, null);
-            builder.addDoubleProperty("WheelSpeedError", pid::getError, null);
-            builder.addDoubleProperty("WheelSpeedTarget", setpoint::getWheelSpeed, null);
             if (verboseLogging) {
                 builder.addDoubleProperty("Amps", hardware::getMotorAmps, null);
-                builder.addDoubleProperty("VoltsFeedforward", () -> latestFeedforward, null);
-                builder.addDoubleProperty("VoltsFeedback", () -> latestFeedback, null);
-                builder.addDoubleProperty("VoltsTotal", () -> latestVolts, null);
+                builder.addDoubleProperty("VoltsOpenLoop", () -> latestVolts, null);
             }
         });
+    }
+
+    /**
+     * @return current speed error
+     */
+    public double getLinearSpeedError() {
+        return setpoint.getLinearSpeed() - currentSpeed.getLinearSpeed();
     }
 
     /**
@@ -107,16 +109,16 @@ public class IntakeSubsystem extends SubsystemBase {
      * can be used to create Triggers for shooting velocities for example)
      */
     public boolean atTarget() {
-        return setpoint.hasSpeed() && pid.atSetpoint();
+        return setpoint.hasSpeed() && atLinearSpeed(setpoint.getLinearSpeed());
     }
 
     /**
-     * @param rps a wheel speed in revolutions per second
-     * @return are we currently at the specified wheel speed, within the
+     * @param fps a linear speed in feet per second
+     * @return are we currently at the specified linear speed, within the
      * configured tolerance?
      */
-    public boolean atWheelSpeed(double rps) {
-        return Math.abs(currentSpeed.getWheelSpeed() - rps) < tolerance.getAsDouble();
+    public boolean atLinearSpeed(double fps) {
+        return Math.abs(currentSpeed.getLinearSpeed() - fps) < tolerance.getAsDouble();
     }
 
     @Override
@@ -133,8 +135,7 @@ public class IntakeSubsystem extends SubsystemBase {
      */
     private void openLoop(double volts) {
         setpoint.clear();
-        latestFeedforward = Double.NaN;
-        latestFeedback = Double.NaN;
+        latestSpeed = Double.NaN;
         latestVolts = Util.clampVolts(volts);
         hardware.applyVolts(latestVolts);
     }
@@ -144,12 +145,9 @@ public class IntakeSubsystem extends SubsystemBase {
      * from the current setpoint
      */
     private void closedLoop() {
-        latestFeedforward = v.getAsDouble() * setpoint.getWheelSpeed();
-        latestFeedback = pid.calculate(
-                currentSpeed.getWheelSpeed(),
-                setpoint.getWheelSpeed());
-        latestVolts = Util.clampVolts(latestFeedforward + latestFeedback);
-        hardware.applyVolts(latestVolts);
+        latestSpeed = setpoint.getWheelSpeed();
+        latestVolts = Double.NaN;
+        hardware.applySpeed(latestSpeed);
     }
 
 //endregion
@@ -197,7 +195,7 @@ public class IntakeSubsystem extends SubsystemBase {
                 () -> {
                     currentMode = mode;
                     setpoint.setWheelSpeed(rps);
-                    pid.reset();
+                    hardware.resetPid(p.getAsDouble(), d.getAsDouble(), v.getAsDouble());
                 },
                 this::closedLoop);
     }
@@ -212,16 +210,16 @@ public class IntakeSubsystem extends SubsystemBase {
                 () -> {
                     currentMode = mode;
                     setpoint.setLinearSpeed(fps);
-                    pid.reset();
+                    hardware.resetPid(p.getAsDouble(), d.getAsDouble(), v.getAsDouble());
                 },
                 this::closedLoop);
     }
 
     /**
-     * @param preset a {@link IntakePreset}
+     * @param preset a {@link ShooterPreset}
      * @return a command that will move the wheel at that speed
      */
-    public Command presetCommand(IntakePreset preset) {
+    public Command presetCommand(ShooterPreset preset) {
 
         Objects.requireNonNull(preset);
 
@@ -231,7 +229,7 @@ public class IntakeSubsystem extends SubsystemBase {
                 () -> {
                     currentMode = preset.name();
                     setpoint.setLinearSpeed(preset.linearSpeed());
-                    pid.reset();
+                    hardware.resetPid(p.getAsDouble(), d.getAsDouble(), v.getAsDouble());
                 },
                 this::closedLoop);
     }

@@ -1,20 +1,32 @@
-package frc.robot.subsystems.intake;
+package frc.robot.subsystems.shooter;
 
+import edu.wpi.first.math.controller.PIDController;
 import frc.robot.util.Util;
 
 /**
- * Implements {@link IntakeHardware} for simulation. This implementation is
- * a very idealized flywheel.
+ * Implements {@link ShooterHardware} for simulation. This implementation is
+ * a very idealized flywheel, with software PID control.
  */
-public class IntakeSim implements IntakeHardware {
+public class ShooterSim implements ShooterHardware {
 
+    final PIDController pid;
     boolean brake = false;
     double velocity = 0.0;
     double position = 0.0;
+    double v = 0.0;
+
+    public ShooterSim() {
+        pid = new PIDController(0.0, 0.0, 0.0);
+    }
 
     @Override
     public boolean isBrakeEnabled() {
         return brake;
+    }
+
+    @Override
+    public void setBrake(boolean brake) {
+        this.brake = brake;
     }
 
     @Override
@@ -38,8 +50,17 @@ public class IntakeSim implements IntakeHardware {
     }
 
     @Override
-    public void setBrake(boolean brake) {
-        this.brake = brake;
+    public void resetPid(double p, double d, double v) {
+        this.v = v;
+        pid.setPID(p, 0.0, d);
+        pid.reset();
+    }
+
+    @Override
+    public void applySpeed(double rps) {
+        double ff = v * rps;
+        double fb = pid.calculate(getMotorSpeed(), rps);
+        applyVolts(Util.clampVolts(ff + fb));
     }
 
     /*
